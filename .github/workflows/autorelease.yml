@@ -7,6 +7,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 concurrency:
   group: ci-autorelease-${{ github.ref }}-1
   cancel-in-progress: true
