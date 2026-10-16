@@ -32,6 +32,31 @@
         <p id="loading-sign" style="display: none"><i class="fas fa-fw fa-spinner fa-spin"></i></p>
     </div>
 
+    <div id="sync-box">
+        <h3>Sync</h3>
+        <p id="txt-sync">Sync status unknown</p>
+        <a id="btn-sync-now" class="button">Sync Now</a>
+        <p>Each Shiori tag is a folder in the Bookmarks Toolbar. A bookmark with several tags appears in each folder. Untagged bookmarks sit plainly in the toolbar. Only ".Trashed By Shiori Extension" is ignored. Moving between folders retags on the server. Browser deletes never delete on the server. Logging in stashes existing browser bookmarks into trash, then syncs down.</p>
+    </div>
+
+    <div id="blocklist-box">
+        <h3>Locally hidden (deleted in browser, kept in Shiori)</h3>
+        <div id="blocklist-add-row">
+            <input id="input-block-url" type="text" placeholder="https://example.com/...">
+            <input id="input-block-tag" type="text" placeholder="tag (empty = untagged)">
+            <a id="btn-block-add" class="button">Hide</a>
+        </div>
+        <div id="blocklist"></div>
+        <a id="btn-block-clear" class="button">Unhide all</a>
+    </div>
+
+    <div id="log-box">
+        <h3>Sync log</h3>
+        <div id="sync-log"></div>
+        <a id="btn-log-refresh" class="button">Refresh</a>
+        <a id="btn-log-clear" class="button">Clear</a>
+    </div>
+
     <script type="application/javascript" src="../js/options.js"></script>
 </body>
 

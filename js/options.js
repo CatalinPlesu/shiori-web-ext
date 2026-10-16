@@ -184,6 +184,132 @@ btnLogin.addEventListener("click", () => {
     showLoading();
 
     btnLoginClick()
-        .catch(err => showError(err))
-        .finally(() => hideLoading());
+        .then(async () => {
+            // Login doubles as the setup event: stash + full sync down.
+            await browser.runtime.sendMessage({ type: "setup-sync" });
+        })
+        .catch(err => showError(err.message || String(err)))
+        .finally(() => {
+            hideLoading();
+            refreshSyncStatus().catch(() => {});
+            refreshBlocklist().catch(() => {});
+            refreshLog().catch(() => {});
+        });
 });
+
+// Sync status + blocklist (locally hidden) management
+var txtSync = document.getElementById("txt-sync"),
+    btnSyncNow = document.getElementById("btn-sync-now"),
+    blocklistEl = document.getElementById("blocklist"),
+    inputBlockUrl = document.getElementById("input-block-url"),
+    inputBlockTag = document.getElementById("input-block-tag"),
+    btnBlockAdd = document.getElementById("btn-block-add"),
+    btnBlockClear = document.getElementById("btn-block-clear");
+
+async function refreshSyncStatus() {
+    try {
+        const st = await browser.runtime.sendMessage({ type: "get-sync-status" });
+        const when = st.lastSync ? new Date(st.lastSync).toLocaleString() : "never";
+        txtSync.textContent = `Last sync: ${when}. Every ${st.intervalMin} min. ${st.blocked} locally hidden.`;
+    } catch (err) {
+        txtSync.textContent = `Sync status unavailable: ${err.message || err}`;
+    }
+}
+
+async function refreshBlocklist() {
+    const list = await browser.runtime.sendMessage({ type: "blocklist-list" });
+    blocklistEl.innerHTML = "";
+    if (!list.length) {
+        blocklistEl.textContent = "Nothing hidden.";
+        return;
+    }
+    list.forEach((entry) => {
+        const row = document.createElement("div");
+        const label = document.createElement("span");
+        label.textContent = `${entry.url} [${entry.tag || "untagged"}] `;
+        const btn = document.createElement("a");
+        btn.className = "button";
+        btn.textContent = "Unhide";
+        btn.addEventListener("click", async () => {
+            await browser.runtime.sendMessage({ type: "blocklist-remove", url: entry.url, tag: entry.tag });
+            await refreshBlocklist();
+            await refreshSyncStatus();
+        });
+        row.appendChild(label);
+        row.appendChild(btn);
+        blocklistEl.appendChild(row);
+    });
+}
+
+if (btnSyncNow) {
+    btnSyncNow.addEventListener("click", async () => {
+        hideError();
+        txtSync.textContent = "Syncing...";
+        try {
+            await browser.runtime.sendMessage({ type: "sync-now" });
+        } catch (err) {
+            showError(err.message || String(err));
+        }
+        await refreshSyncStatus();
+        await refreshLog();
+    });
+}
+
+if (btnBlockAdd) {
+    btnBlockAdd.addEventListener("click", async () => {
+        const url = (inputBlockUrl.value || "").trim();
+        const tag = (inputBlockTag.value || "").trim() || null;
+        if (!url) {
+            showError("URL must not be empty");
+            return;
+        }
+        await browser.runtime.sendMessage({ type: "blocklist-add", url, tag });
+        inputBlockUrl.value = "";
+        inputBlockTag.value = "";
+        await refreshBlocklist();
+        await refreshSyncStatus();
+    });
+}
+
+if (btnBlockClear) {
+    btnBlockClear.addEventListener("click", async () => {
+        await browser.runtime.sendMessage({ type: "blocklist-clear" });
+        await refreshBlocklist();
+        await refreshSyncStatus();
+    });
+}
+
+refreshSyncStatus().catch(() => {});
+refreshBlocklist().catch(() => {});
+
+// Sync log view
+var syncLogEl = document.getElementById("sync-log"),
+    btnLogRefresh = document.getElementById("btn-log-refresh"),
+    btnLogClear = document.getElementById("btn-log-clear");
+
+async function refreshLog() {
+    const log = await browser.runtime.sendMessage({ type: "get-log" });
+    syncLogEl.innerHTML = "";
+    if (!log.length) {
+        syncLogEl.textContent = "Log empty.";
+        return;
+    }
+    log.slice().reverse().forEach((entry) => {
+        const row = document.createElement("div");
+        row.textContent = `${new Date(entry.t).toLocaleString()} ${entry.msg}`;
+        syncLogEl.appendChild(row);
+    });
+}
+
+if (btnLogRefresh) {
+    btnLogRefresh.addEventListener("click", () => refreshLog().catch(err => showError(err.message || String(err))));
+}
+
+if (btnLogClear) {
+    btnLogClear.addEventListener("click", async () => {
+        await browser.runtime.sendMessage({ type: "clear-log" });
+        await refreshLog();
+    });
+}
+
+refreshLog().catch(() => {});

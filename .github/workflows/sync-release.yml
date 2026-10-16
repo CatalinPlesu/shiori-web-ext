@@ -1,0 +1,52 @@
+name: 'Sync Release (unsigned)'
+
+# Personal release flow: push a tag like sync-v1, or run manually, and get a
+# downloadable zip attached to a GitHub Release. No AMO signing involved, so
+# install via about:debugging (temporary) or a Firefox that accepts unsigned
+# extensions (e.g. Nightly/Developer with signatures disabled).
+#
+# For a permanently installable build on release Firefox, submit the zip to
+# addons.mozilla.org (self-distribution) once, or add AMO_SIGN_KEY /
+# AMO_SIGN_SECRET repo secrets and use the upstream autorelease.yml flow.
+
+on:
+  push:
+    tags:
+      - 'sync-*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-sync-release-${{ github.ref }}-1
+  cancel-in-progress: true
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: web-ext lint
+        uses: kewisch/action-web-ext@fe10addf5d5e5ba6b78ffde720dd488a27d10e8c # v1.3
+        with:
+          cmd: lint
+          source: .
+
+      - name: web-ext build
+        id: web-ext-build
+        uses: kewisch/action-web-ext@fe10addf5d5e5ba6b78ffde720dd488a27d10e8c # v1.3
+        with:
+          cmd: build
+          source: .
+          filename: "shiori-sync-{version}.zip"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ./web-ext-artifacts/*
+          generate_release_notes: true
