@@ -43,10 +43,15 @@ jobs:
           source: .
           filename: "shiori-sync-{version}.zip"
 
+      - name: Get version
+        id: version
+        run: echo "VERSION=$(jq -r .version manifest.json)" >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ./web-ext-artifacts/*
+          tag_name: sync-v${{ steps.version.outputs.VERSION }}
           generate_release_notes: true
